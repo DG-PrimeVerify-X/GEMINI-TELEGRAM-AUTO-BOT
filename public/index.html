@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-6 font-sans">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-slate-800 pb-4">
+            <div>
+                <h1 class="text-3xl font-extrabold">👑 Master Admin Dashboard</h1>
+                <p class="text-sm text-slate-400 mt-1">Modular Telegram Bot Control Center</p>
+            </div>
+            <div id="health" class="bg-slate-900 px-4 py-2 rounded border border-slate-800 text-emerald-400 text-sm font-semibold">🟢 Online</div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-slate-400 text-xs font-semibold uppercase">Total Users</h3>
+                <p id="users" class="text-3xl font-extrabold mt-2 text-white">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-slate-400 text-xs font-semibold uppercase">1M Predictions</h3>
+                <p id="predictions" class="text-3xl font-extrabold mt-2 text-amber-400">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-slate-400 text-xs font-semibold uppercase">Auto-Accept</h3>
+                <p id="accept-status" class="text-3xl font-extrabold mt-2 text-emerald-400">Active</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-xl">
+                <h3 class="text-slate-400 text-xs font-semibold uppercase">Security Mode</h3>
+                <p class="text-3xl font-extrabold mt-2 text-indigo-400">Secured</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+                <h2 class="text-xl font-semibold mb-4">⚡ Core Automations</h2>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded border border-slate-800">
+                        <span>Auto Accept Join Requests</span>
+                        <input type="checkbox" id="toggle-accept" onchange="saveSettings()" class="w-5 h-5 accent-indigo-600">
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded border border-slate-800">
+                        <span>Auto-DM Welcome</span>
+                        <input type="checkbox" id="toggle-dm" onchange="saveSettings()" class="w-5 h-5 accent-indigo-600">
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-950 p-3 rounded border border-slate-800">
+                        <span>Auto Multiple Reactions</span>
+                        <input type="checkbox" id="toggle-reaction" onchange="saveSettings()" class="w-5 h-5 accent-indigo-600">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-xs text-slate-400 mb-1">Auto-DM Custom Message</label>
+                    <input type="text" id="autodm-text" class="w-full p-2 bg-slate-950 border border-slate-800 rounded text-sm mb-2">
+                    <button onclick="saveSettings()" class="bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold py-2 px-4 rounded">Save Automations</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4">📢 Quick Broadcast</h2>
+                    <textarea id="broadcast-msg" rows="4" class="w-full p-3 bg-slate-950 border border-slate-800 rounded text-sm text-slate-200" placeholder="Type announcement..."></textarea>
+                </div>
+                <button onclick="sendBroadcast()" class="mt-4 bg-emerald-600 hover:bg-emerald-500 font-semibold py-2.5 px-4 rounded text-sm">Send Broadcast</button>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+            <h2 class="text-xl font-semibold mb-3">🏥 System Activity Logs</h2>
+            <div id="logs" class="bg-slate-950 border border-slate-800 rounded p-4 h-36 overflow-y-auto font-mono text-xs text-slate-300 space-y-1">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchState() {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+            document.getElementById('users').innerText = data.botStats.totalUsers;
+            document.getElementById('predictions').innerText = data.botStats.predictionsRun;
+            document.getElementById('toggle-accept').checked = data.systemState.autoAccept;
+            document.getElementById('toggle-dm').checked = data.systemState.autoDm;
+            document.getElementById('toggle-reaction').checked = data.systemState.autoReaction;
+            document.getElementById('autodm-text').value = data.systemState.autoDmText;
+            document.getElementById('accept-status').innerText = data.systemState.autoAccept ? 'Active' : 'Off';
+        }
+
+        async function fetchLogs() {
+            const res = await fetch('/api/logs');
+            const logs = await res.json();
+            document.getElementById('logs').innerHTML = logs.map(l => `<div><span class="text-indigo-400">[${l.time}]</span> ${l.message}</div>`).join('');
+        }
+
+        async function saveSettings() {
+            const payload = {
+                autoAccept: document.getElementById('toggle-accept').checked,
+                autoDm: document.getElementById('toggle-dm').checked,
+                autoReaction: document.getElementById('toggle-reaction').checked,
+                autoDmText: document.getElementById('autodm-text').value
+            };
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            fetchState();
+            fetchLogs();
+            alert('Settings updated successfully!');
+        }
+
+        async function sendBroadcast() {
+            const message = document.getElementById('broadcast-msg').value.trim();
+            if(!message) return alert('Enter message');
+            const res = await fetch('/api/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await res.json();
+            alert(data.message);
+            document.getElementById('broadcast-msg').value = '';
+            fetchLogs();
+        }
+
+        fetchState();
+        fetchLogs();
+        setInterval(() => { fetchState(); fetchLogs(); }, 4000);
+    </script>
+</body>
+</html>
